@@ -1,0 +1,170 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="icon" type="image/png" href="~/Images/logo.png">
+    <title>Autenticação do Usuário - Sistema de Controle de Representações</title>
+
+    <link rel="stylesheet" type="text/css" href="~/Content/bootstrap.css">
+
+    <style type="text/css">
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            background: rgb(0,120,212);
+        }
+
+        .box {
+            border-radius: 10px;
+            width: 300px;
+            padding: 50px 10px 20px 10px;
+            background: white;
+        }
+
+        body {
+            margin: 0px;
+            padding: 0px;
+        }
+
+        .btn-login {
+            width: 100%;
+        }
+
+        .logo {
+            background-image: url("../../Images/logo-personalizado.png");
+            background-size: cover;
+            background-position: center;
+            height: 150px;
+            width: 150px;
+            margin: auto;
+            padding: 0px;
+            border-radius: 0px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="box">
+            <div class="logo "></div><br /><br />
+                <div class="form-group">
+                    <label for="login">Login:</label>
+                    <input type="text" name="login" id="login" class="form-control" />
+                    <span id="msgLogin" class="label label-danger hidden"></span>
+                </div>
+                <div class="form-group">
+                    <label for="senha">Senha:</label>
+                    <input type="password" name="senha" id="senha" class="form-control" />
+                    <span id="msgSenha" class="label label-danger hidden"></span>
+                </div>
+                <input type="button" id="btnEntrar" class="btn btn-login btn-primary" value="ENTRAR" />
+                <span id="msgAutenticacao" class="label label-danger hidden"></span>
+        </div>
+
+    </div>
+
+    <script type="text/javascript" src="~/Scripts/jquery-3.4.1.js"></script>
+    <script type="text/javascript" src="~/Scripts/bootstrap.js"></script>
+
+    <script type="text/javascript">
+        var txtLogin = document.getElementById("login");
+        var txtSenha  = document.getElementById("senha");
+        var btnEntrar = document.getElementById("btnEntrar");
+        var form = document.getElementById("formValidar");
+        var msgLogin1 = document.getElementById("msgLogin");
+        var msgSenha1 = document.getElementById("msgSenha");
+        var msgAutenticacao = document.getElementById("msgAutenticacao");
+        
+        function validarAcesso() {
+            var msgLogin = "";
+            var msgSenha = "";
+        
+            var txLogin = $(txtLogin).val();
+            var txSenha = $(txtSenha).val();
+        
+            if(txLogin == null) msgLogin += "O Login precisa ser preenchido!";
+            if(txLogin != null && txLogin === "") msgLogin += "O Login precisa ser preenchido!";
+            if(txSenha == null) msgSenha += "A senha precisa ser preenchida!";
+            if(txSenha != null && txSenha === "") msgSenha += "A senha precisa ser preenchida!";
+        
+            if(msgLogin.length > 0)
+            {
+                msgLogin1.classList.remove("hidden");
+                msgLogin1.innerHTML = msgLogin;
+            }
+            else
+            {
+                if(!msgLogin1.classList.contains("hidden"))
+                {
+                    msgLogin1.classList.add("hidden");
+                }
+            }
+        
+            if(msgSenha.length > 0)
+            {
+                msgSenha1.classList.remove("hidden");
+                msgSenha1.innerHTML = msgSenha;
+            }
+            else
+            {
+                if(!msgSenha1.classList.contains("hidden"))
+                {
+                    msgSenha1.classList.add("hidden");
+                }
+            }
+        
+            if(msgLogin.length === 0 && msgSenha.length === 0)
+            {
+                $.ajax({
+                    type: 'POST',
+                    url: '/Login/Autenticar',
+                    data: { login : txLogin, senha : txSenha },
+                    success: function (result)
+                    {
+                        if(result.user !== "")
+                        {
+                            if(result.user === "first")
+                            {
+                                window.location.href = "../../configuracao/wizard/parametrizacao";
+                            }
+                            else
+                            {
+                                window.location.href = "../../Inicio/Index";
+                            }
+                        }
+                        else
+                        {
+                            msgAutenticacao.innerHTML = result.msg;
+                            msgAutenticacao.classList.remove("hidden");
+                        }
+                    },
+                    error: function ()
+                    {
+                        alert("Houve um problema no processamento desta requisição...\nSe o problema persistir, entre em contato com o suporte.");
+                    }
+                });
+            }
+        }
+        
+        btnEntrar.addEventListener("click", function (event) {
+            validarAcesso();
+        });
+        
+        txtSenha.addEventListener("keypress", function (event) {
+            if (event.which === 13) {
+                validarAcesso();
+            }
+        });
+    </script>
+</body>
+</html>
