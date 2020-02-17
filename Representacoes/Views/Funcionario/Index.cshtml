@@ -1,0 +1,377 @@
+﻿@{ ViewData["Title"] = "Gerenciar Funcionarios"; }
+
+@section Scripts
+{
+    <script type="text/javascript" src="~/Scripts/bootbox.min.js"></script>
+    <script type="text/javascript">
+        var nivel_atual = "";
+
+        function preencherTabela(dados) {
+            var txt = "";
+            $.each(dados, function () {
+                var tipo = (this.Funcionario.Tipo === 1) ? "Interno" : "Vendedor";
+                var ativo = (this.Ativo === true) ? "Sim" : "Não";
+                txt +=
+                    '<tr>\
+                        <td class="hidden">' + this.Id + '</td>\
+                        <td>' + this.Funcionario.Pessoa.Nome + '</td>\
+                        <td>' + this.Login + '</td>\
+                        <td>' + this.Nivel.Descricao + '</td>\
+                        <td>' + this.Funcionario.Pessoa.Cpf + '</td>\
+                        <td>' + FormatarData(this.Funcionario.Admissao) + '</td>\
+                        <td>' + tipo + '</td>\
+                        <td>' + ativo + '</td>\
+                        <td>' + this.Funcionario.Pessoa.Contato.Email + '</td>';
+                        if (ativo === "Sim") {
+                            txt += '<td><a role="button" class="glyphicon glyphicon-off" data-toggle="tooltip" data-placement="top" title="DESATIVAR" href="javascript:desativar('+ this.Id +',\''+ this.Nivel.Descricao +'\')"></a></td>';
+                        } else {
+                            txt += '<td><a role="button" class="glyphicon glyphicon-off" data-toggle="tooltip" data-placement="top" title="REATIVAR" href="javascript:reativar('+ this.Id +')"></a></td>';
+                        }
+                        txt += '<td><a role="button" class="glyphicon glyphicon-edit" data-toggle="tooltip" data-placement="top" title="ALTERAR" href="javascript:alterar(' + this.Id + ')"></a></td>\
+                        <td><a role="button" class="glyphicon glyphicon-trash" data-toggle="tooltip" data-placement="top" title="EXCLUIR" href="javascript:excluir(' + this.Id + ',\''+this.Nivel.Descricao +'\')"></a></td>\
+                    </tr>';
+            });
+            $("#tbody_funcionarios").html(txt);
+        }
+
+        function ordenarLista() {
+            var ord = $("#cbord").val();
+
+            $.ajax({
+                type: 'POST',
+                url: '/Funcionario/Ordenar',
+                async: false,
+                data: { col: ord },
+                success: function (response) { preencherTabela(response); },
+                error: function () { alert("Ocorreu um problema ao comunicar-se com o servidor..."); }
+            });
+        }
+
+        function get(url_i) {
+            let res;
+            $.ajax({
+                type: 'GET',
+                url: url_i,
+                async: false,
+                contentType: 'application/json',
+                dataType: 'json',
+                success: function (result) {res = result;},
+                error: function (err) {alert(err.d);}
+            });
+            return res;
+        }
+
+        function obterFuncionarios() {
+            var data = get("/Funcionario/Obter");
+            preencherTabela(data);
+        }
+
+        $(document).ready(function (event) {
+            obterFuncionarios();
+        });
+
+        function verificarAdmin() {
+            var data = get("/Funcionario/IsLastAdmin");
+            return (data === true && nivel_atual === "Administrador");
+        }
+
+        function filtrarFuncionarios() {
+            var filtro = $("#filtro").val();
+            var admissao = $("#filtro_adm").val();
+
+            if (filtro === "" && admissao === "") {
+                obterFuncionarios();
+            } else {
+                if (filtro !== "" && admissao !== "") {
+                    $.ajax({
+                        type: 'POST',
+                        url: '/Funcionario/ObterPorChaveAdm',
+                        data: { chave: filtro, adm: admissao },
+                        success: function (response) {
+                            if (response != null && response !== ""){
+                                preencherTabela(response);
+                            }
+                        },
+                        error: function () {
+                            alert("Ocorreu um erro ao comunicar-se com o servidor...");
+                        }
+                    });
+                } else {
+                    if (filtro !== "") {
+                        $.ajax({
+                            type: 'POST',
+                            url: '/Funcionario/ObterPorChave',
+                            data: { chave: filtro },
+                            success: function (response) {
+                                if (response != null && response !== ""){
+                                    preencherTabela(response);
+                                }
+                            },
+                            error: function () {
+                                alert("Ocorreu um erro ao comunicar-se com o servidor...");
+                            }
+                        });
+                    } else {
+                        if (admissao !== ""){
+                            $.ajax({
+                                type: 'POST',
+                                url: '/Funcionario/ObterPorAdmissao',
+                                data: { adm: admissao },
+                                success: function (response) {
+                                    if (response != null && response !== ""){
+                                        preencherTabela(response);
+                                    }
+                                },
+                                error: function () {
+                                    alert("Ocorreu um erro ao comunicar-se com o servidor...");
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        function excluir(id, nivel) {
+            nivel_atual = nivel;
+
+            if (verificarAdmin() === true) {
+                alert("Não é possível excluir o último administrador.");
+            } else {
+                bootbox.confirm({
+                    message: "Confirma o excluir deste funcionário?",
+                    buttons: {
+                        confirm: {
+                            label: 'Sim',
+                            className: 'btn-success'
+                        },
+                        cancel: {
+                            label: 'Não',
+                            className: 'btn-danger'
+                        }
+                    },
+                    callback: function (result) {
+                        if (result) {
+                            $.ajax({
+                                type: 'POST',
+                                url: '/Funcionario/Excluir',
+                                data: {id: id},
+                                success: function (result) {
+                                    if (result.length > 0) {
+                                        mostraDialogo(
+                                            "<strong>Ocorreu um problema ao excluir o funcionário...</strong>\
+                                            <br/>"+result,
+                                            "danger",
+                                            2000
+                                        );
+                                    } else {
+                                        obterFuncionarios();
+                                    }
+                                },
+                                error: function (XMLHttpRequest, txtStatus, errorThrown) {
+                                    alert("Status: " + txtStatus);
+                                    alert("Error: " + errorThrown);
+                                    $("#divLoading").hide(300);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        }
+
+        function desativar(id, nivel) {
+            nivel_atual = nivel;
+
+            if (verificarAdmin() === true) {
+                alert("Não é possível excluir o último administrador.");
+            } else {
+                bootbox.confirm({
+                    message: "Confirma o desligamento deste funcionário?",
+                    buttons: {
+                        confirm: {
+                            label: 'Sim',
+                            className: 'btn-success'
+                        },
+                        cancel: {
+                            label: 'Não',
+                            className: 'btn-danger'
+                        }
+                    },
+                    callback: function (result) {
+                        if (result) {
+                            $.ajax({
+                                type: 'POST',
+                                url: '/Funcionario/Desativar',
+                                data: {id: id},
+                                success: function (result) {
+                                    if (result > 0) {
+                                        obterFuncionarios();
+                                    } else {
+                                        alert("Ocorreu um problema ao desativar o funcionário...");
+                                    }
+                                },
+                                error: function (XMLHttpRequest, txtStatus, errorThrown) {
+                                    alert("Status: " + txtStatus);
+                                    alert("Error: " + errorThrown);
+                                    $("#divLoading").hide(300);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        }
+
+        function reativar(id) {
+            bootbox.confirm({
+                message: "Confirma a Reativação deste funcionário?",
+                buttons: {
+                    confirm: {
+                        label: 'Sim',
+                        className: 'btn-success'
+                    },
+                    cancel: {
+                        label: 'Não',
+                        className: 'btn-danger'
+                    }
+                },
+                callback: function (result) {
+                    if (result) {
+                        $.ajax({
+                            type: 'POST',
+                            url: '/Funcionario/Reativar',
+                            data: { id: id },
+                            success: function (result) {
+                                if (result > 0) {
+                                    obterFuncionarios();
+                                }
+                                else {
+                                    alert("Ocorreu um problema ao reativar este funcionário...");
+                                }
+                            },
+                            error: function (XMLHttpRequest, txtStatus, errorThrown) {
+                                alert("Status: " + txtStatus); alert("Error: " + errorThrown);
+                                $("#divLoading").hide(300);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        function alterar(id) {
+            $.ajax({
+                type: 'POST',
+                url: '/Funcionario/Enviar',
+                data: { id: id },
+                success: function (result) {
+                    if (result.length > 0) alert(result);
+                    else {
+                        window.location.href = "../../gerenciar/funcionario/detalhes";
+                    }
+                },
+                error: function (XMLHttpRequest, txtStatus, errorThrown) {
+                    mostraDialogo(
+                        "<strong>Ocorreu um erro ao se comunicar com o servidor...</strong>" +
+                        "<br/>"+errorThrown,
+                        "danger",
+                        2000
+                    );
+                }
+            });
+        }
+    </script>
+}
+
+<!-- Card titulo pagina -->
+<div class="card-title">
+    <div class="card-title-container" style="text-align: center;">
+        <h4>
+            <b>SCR - Gerenciar Funcionários</b>
+        </h4>
+    </div>
+</div>
+<!-- Fim card titulo pagina -->
+
+<div class="fieldset-card">
+    <div class="fieldset-card-legend">Filtragem de Funcionários</div>
+
+    <div class="fieldset-card-container">
+        <div class="row">
+            <div class="col-sm-8">
+                <label for="filtro">Filtro:</label>
+                <input type="text" id="filtro" class="form-control input-sm" style="width: 100%;" placeholder="Filtrar por nome, login e email..." />
+            </div>
+
+            <div class="col-sm-2">
+                <label for="filtro_adm">Filtro Admissão:</label>
+                <input type="date" id="filtro_adm" class="form-control input-sm" style="width: 100%;" />
+            </div>
+
+            <div class="col-sm-2">
+                <label for="filtrar">&nbsp;</label>
+                <button id="filtrar" class="btn btn-primary btn-sm" style="width: 100%;" onclick="filtrarFuncionarios();">FILTRAR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="fieldset-card" style="margin-bottom: 40px;">
+    <div class="fieldset-card-legend">Funcionários Cadastrados</div>
+
+    <div class="fieldset-card-container">
+        <div class="row" style="margin-bottom: 10px;">
+            <div class="col-sm-10">
+                <label for="cbord">Ordenar por:</label>
+                <select id="cbord" class="form-control input-sm" onchange="ordenarLista();">
+                    <option value="1">REGISTRO (CRESCENTE)</option>
+                    <option value="2">REGISTRO (DECRESCENTE)</option>
+                    <option value="3">NOME (CRESCENTE)</option>
+                    <option value="4">NOME (DECRESCENTE)</option>
+                    <option value="5">USUÁRIO (CRESCENTE)</option>
+                    <option value="6">USUÁRIO (DECRESCENTE)</option>
+                    <option value="7">NÍVEL (CRESCENTE)</option>
+                    <option value="8">NÍVEL (DECRESCENTE)</option>
+                    <option value="9">CPF (CRESCENTE)</option>
+                    <option value="10">CPF (DECRESCENTE)</option>
+                    <option value="11">ADMISSÃO (CRESCENTE)</option>
+                    <option value="12">ADMISSÃO (DECRESCENTE)</option>
+                    <option value="13">TIPO (CRESCENTE)</option>
+                    <option value="14">TIPO (DECRESCENTE)</option>
+                    <option value="15">ATIVO (CRESCENTE)</option>
+                    <option value="16">ATIVO (DECRESCENTE)</option>
+                    <option value="17">EMAIL (CRESCENTE)</option>
+                    <option value="18">EMAIL (DECRESCENTE)</option>
+                </select>
+            </div>
+
+            <div class="col-sm-2">
+                <label for="novo">&nbsp;</label>
+                <a role="button" id="novo" class="btn btn-success btn-sm" style="width: 100%;" href="/gerenciar/funcionario/novo">NOVO</a>
+            </div>
+        </div>
+
+        <table id="table_funcionarios" class="table table-responsive" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th class="hidden">ID</th>
+                    <th style="width: 20%;">NOME</th>
+                    <th style="width: 10%;">USUÁRIO</th>
+                    <th style="width: 12%;">NÍVEL</th>
+                    <th style="width: 12%;">CPF</th>
+                    <th style="width: 8%;">ADMISSÃO</th>
+                    <th style="width: 10%;">TIPO</th>
+                    <th style="width: 8%;">ATIVO</th>
+                    <th>EMAIL</th>
+                    <th style="width: 2%;">&nbsp;</th>
+                    <th style="width: 2%;">&nbsp;</th>
+                    <th style="width: 2%;">&nbsp;</th>
+                </tr>
+            </thead>
+
+            <tbody id="tbody_funcionarios">
+            </tbody>
+        </table>
+    </div>
+</div>

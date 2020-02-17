@@ -13,6 +13,8 @@ namespace Representacoes
         {
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
 
+            routes.MapRoute("Funcionario", "gerenciar/funcionario/index", new { controller = "Funcionario", action = "Index" });
+
             routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",

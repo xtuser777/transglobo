@@ -140,6 +140,11 @@ namespace Representacoes.Models
             return ExecutaComando();
         }
 
+        public bool VerificarLogin(string login)
+        {
+            return LoginCount(login) > 0;
+        }
+
         public int Excluir(int id)
         {
             ComandoSQL.Parameters.Clear();
@@ -178,6 +183,11 @@ namespace Representacoes.Models
             }
 
             return 0;
+        }
+
+        public bool IsLastAdmin()
+        {
+            return (AdminCount() == 1);
         }
 
         public UsuarioVM ToViewModel()

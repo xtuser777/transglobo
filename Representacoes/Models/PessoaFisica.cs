@@ -76,6 +76,22 @@ namespace Representacoes.Models
             return list;
         }
 
+        public int CountCpf(string cpf)
+        {
+            ComandoSQL.Parameters.Clear();
+            ComandoSQL.CommandText = @"select count(id) as cnt from pessoa_fisica where cpf = @cpf;";
+            ComandoSQL.Parameters.AddWithValue("@cpf", cpf);
+
+            DataTable dt = ExecutaSelect();
+
+            return dt != null && dt.Rows.Count > 0 ? Convert.ToInt32(dt.Rows[0]["cnt"]) : -10;
+        }
+
+        public bool VerifyCpf(string cpf)
+        {
+            return !string.IsNullOrEmpty(cpf) && CountCpf(cpf) > 0;
+        }
+
         public int Gravar()
         {
             ComandoSQL.Parameters.Clear();
